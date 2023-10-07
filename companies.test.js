@@ -29,6 +29,17 @@ describe("GET /companies", () => {
   });
 });
 
+describe("GET /companies/:code", () => {
+    test("Gets a company by code", async () => {
+      const response = await request(app).get('/companies/testco');
+      expect(response.statusCode).toBe(200);
+      expect(response.body.company).toHaveProperty("code");
+      expect(response.body.company).toHaveProperty("industries");
+      // Add more assertions as needed
+    });
+  });
+  
+
 describe("POST /companies", () => {
     test("Creates a new company with a slugified code", async () => {
         const response = await request(app)
@@ -47,4 +58,26 @@ describe("POST /companies", () => {
     });
 });
 
-
+describe("POST /industries", () => {
+    test("Creates a new industry", async () => {
+      const timestamp = Date.now();
+      const response = await request(app).post('/industries').send({
+        code: `testind-${timestamp}`,
+        industry: `Test Industry ${timestamp}`
+      });
+      expect(response.statusCode).toBe(201);
+      // Add more assertions as needed
+    });
+});
+  
+  describe("POST /industries/company_industries", () => {
+    test("Associates a company with an industry", async () => {
+      const response = await request(app).post('/industries/company_industries').send({
+        company_code: "testco",
+        industry_code: "testind"
+      });
+      expect(response.statusCode).toBe(200);
+      expect(response.body.message).toBe("Associated!");
+      // Add more assertions as needed
+    });
+});
