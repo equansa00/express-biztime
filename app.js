@@ -1,13 +1,14 @@
-const express = require("express");
-const companyRoutes = require("./routes/companies");
+const companyRoutes = require('./routes/companies');
 const invoiceRoutes = require("./routes/invoices");
 const industriesRoutes = require('./routes/industries');
 
+const express = require("express");
 const app = express();
 const ExpressError = require("./expressError");
 
+app.use(companyRoutes);
 app.use(express.json());
-app.use("/companies", companyRoutes);
+app.use('/companies', companyRoutes);
 app.use("/invoices", invoiceRoutes);
 app.use('/industries', industriesRoutes);
 
