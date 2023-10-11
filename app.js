@@ -1,16 +1,19 @@
-const companyRoutes = require('./routes/companies');
+const companyRoutes = require("./routes/companies");
 const invoiceRoutes = require("./routes/invoices");
-const industriesRoutes = require('./routes/industries');
+const industriesRoutes = require("./routes/industries");
 
 const express = require("express");
 const app = express();
 const ExpressError = require("./expressError");
 
-app.use(companyRoutes);
+// Middleware should be set up first
 app.use(express.json());
-app.use('/companies', companyRoutes);
+
+// Then, your routes
+app.use("/companies", companyRoutes);
 app.use("/invoices", invoiceRoutes);
-app.use('/industries', industriesRoutes);
+app.use("/industries", industriesRoutes);
+
 
 /** 404 handler */
 app.use(function(req, res, next) {
@@ -32,3 +35,4 @@ if (process.env.NODE_ENV !== 'test') {
 }
 
 module.exports = app;
+

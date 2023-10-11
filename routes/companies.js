@@ -51,7 +51,7 @@ router.get('/', async (req, res, next) => {
 router.get('/:code', async (req, res, next) => {
     try {
         const { code } = req.params;
-        
+
         // Check if the company exists
         const companyRes = await db.query('SELECT code, name, description FROM companies WHERE code = $1', [code]);
         
@@ -63,23 +63,23 @@ router.get('/:code', async (req, res, next) => {
         // Fetch the associated invoices for the company
         const invoiceRes = await db.query(
             `SELECT id, amt, paid, add_date, paid_date 
-            FROM invoices
-            WHERE comp_code = $1`,
+             FROM invoices
+             WHERE comp_code = $1`,
             [code]
         );
 
         // Fetch the associated industries for the company
         const industryRes = await db.query(
             `SELECT industry 
-            FROM industries 
-            JOIN company_industries ON industries.code = company_industries.industry_code 
-            WHERE company_code = $1`,
+             FROM industries 
+             JOIN company_industries ON industries.code = company_industries.industry_code 
+             WHERE company_code = $1`,
             [code]
         );
 
         const company = companyRes.rows[0];
-        company.invoices = invoiceRes.rows;
-        company.industries = industryRes.rows.map(r => r.industry);
+        company.invoices = invoiceRes.rows; // Add associated invoices
+        company.industries = industryRes.rows.map(r => r.industry); // Add associated industries
         
         return res.json({ company });
 
@@ -104,6 +104,49 @@ router.put('/:code', async (req, res, next) => {
         return next(e);
     }
 });
+
+router.put('/:id', async (req, res, next) => {
+    console.log("Request Params:", req.params);
+    console.log("Request Body:", req.body);
+    const { amt, paid } = req.body;
+    try {
+        const { id } = req.params;
+        console.log(`Attempting to update invoice with id: ${id}`);
+        
+        const currentInvoiceRes = await db.query('SELECT paid, paid_date FROM invoices WHERE id=$1', [id]);
+
+        if (currentInvoiceRes.rowCount === 0) {
+            console.log(`Invoice with id: ${id} was not found in the database!`);
+            return res.status(404).json({ error: "Invoice not found" });
+        } else {
+            console.log(`Invoice with id: ${id} was found. Proceeding to update.`);
+        }
+
+        const currentInvoice = currentInvoiceRes.rows[0];
+        let paidDate = currentInvoice.paid_date;
+
+        if (paid && !currentInvoice.paid) {
+            paidDate = new Date();
+        } else if (!paid) {
+            paidDate = null;
+        }
+
+        const result = await db.query(
+            'UPDATE invoices SET amt=$1, paid=$2, paid_date=$3 WHERE id=$4 RETURNING id, comp_code, amt, paid, add_date, paid_date',
+            [amt, paid, paidDate, id]
+        );
+
+        if (result.rowCount === 0) {
+            return res.status(500).json({ error: "Failed to update invoice" }); 
+        }
+
+        return res.json({ invoice: result.rows[0] });
+    } catch (e) {
+        console.error("An error occurred while updating the invoice:", e.message); 
+        return next(e);
+    }
+});
+
 
 router.delete('/:code', async (req, res, next) => {
     try {

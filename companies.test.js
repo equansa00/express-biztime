@@ -1,16 +1,23 @@
+const db = require('/home/edward/Desktop/express-biztime/db.js');
 const request = require('supertest');
-const app = require('./app');
-const db = require("./db");
+const app = require('/home/edward/Desktop/express-biztime/app.js');
 
 describe('Company and Industry operations', () => {
     // Set up the necessary data before each test
     beforeEach(async () => {
         await db.query(`INSERT INTO companies (code, name, description) VALUES ('testco', 'Test Company', 'Test Description')`);
         await db.query(`INSERT INTO industries (code, industry) VALUES ('testind', 'Test Industry')`);
+        const result = await db.query(
+            `INSERT INTO invoices (id, comp_code, amt, paid, add_date, paid_date) VALUES (1, 'testco', 200, false, NOW(), NULL)`
+        );
+        console.log("Invoice with ID 1 after insertion:", result.rows);
+        console.log(result.rows);
+
     });
 
     // Remember to clean up after each test to avoid potential conflicts
     afterEach(async () => {
+        await db.query(`DELETE FROM invoices WHERE id=1`);
         await db.query("DELETE FROM companies WHERE code='testco'");
         await db.query("DELETE FROM industries WHERE code='testind'");
     });
@@ -83,14 +90,18 @@ describe('GET /companies/:code', () => {
         await db.query(`INSERT INTO companies (code, name, description) VALUES ('testco', 'Test Company', 'Test Description')`);
         await db.query(`INSERT INTO industries (code, industry) VALUES ('testind', 'Test Industry')`);
         await db.query(`INSERT INTO company_industries (company_code, industry_code) VALUES ('testco', 'testind')`);
-        await db.query(`INSERT INTO invoices (comp_code, amt) VALUES ('testco', 100)`);
+        await db.query(
+            `INSERT INTO invoices (id, comp_code, amt, paid, add_date, paid_date) VALUES (1, 'testco', 200, false, NOW(), NULL)`
+          );
+        const result = await db.query('SELECT * FROM invoices WHERE id=1');
+        console.log("Invoice with ID 1 after insertion:", result.rows);
     });
 
     // Clean up after each test
     afterEach(async () => {
         await db.query("DELETE FROM company_industries WHERE company_code='testco'");
         await db.query("DELETE FROM industries WHERE code='testind'");
-        await db.query("DELETE FROM invoices WHERE comp_code='testco'");
+        await db.query('DELETE FROM invoices WHERE id=1;');
         await db.query("DELETE FROM companies WHERE code='testco'");
     });
 
@@ -113,7 +124,28 @@ describe('GET /companies/:code', () => {
     });
 });
 
+describe('PUT /invoices/:id', () => {
+    test('Updates an invoice', async () => {
+        const response = await request(app)
+            .put('/invoices/1') // Use the invoice id 1
+            .send({ amt: 500, paid: true });
+        
+        console.log(response.body);  
+        expect(response.statusCode).toBe(200);
+        expect(response.body.invoice.amt).toEqual(500);
+        expect(response.body.invoice.paid).toBe(true);
+    });
+
+    test('Returns 404 for non-existent invoice', async () => {
+        const response = await request(app)
+            .put('/invoices/999999') // Use a non-existent invoice id
+            .send({ amt: 500, paid: true });
+
+        expect(response.statusCode).toBe(404);
+    });
+});
+
 // Add this to close the database connection after all tests are done
 afterAll(async () => {
-  await db.end();
+    await db.end();
 });

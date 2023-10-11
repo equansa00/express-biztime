@@ -1,7 +1,41 @@
 const express = require("express");
-const router = new express.Router();
+const router = express.Router();
 const db = require("../db");
 const ExpressError = require("../expressError");
+
+  // PUT /invoices/[id]
+  router.put('/:id', async (req, res, next) => {
+    try {
+        const { id } = req.params;
+        const { amt, paid } = req.body;
+
+        // Fetch the current invoice details
+        const currentInvoiceRes = await db.query('SELECT paid, paid_date FROM invoices WHERE id=$1', [id]);
+
+        if (currentInvoiceRes.rowCount === 0) {
+            throw new ExpressError('Invoice not found', 404);
+        }
+
+        const currentInvoice = currentInvoiceRes.rows[0];
+        let paidDate = currentInvoice.paid_date;
+
+        if (paid && !currentInvoice.paid) {
+            paidDate = new Date();
+        } else if (!paid) {
+            paidDate = null;
+        }
+
+        const result = await db.query(
+            'UPDATE invoices SET amt=$1, paid=$2, paid_date=$3 WHERE id=$4 RETURNING id, comp_code, amt, paid, add_date, paid_date',
+            [amt, paid, paidDate, id]
+        );
+
+        res.json({ invoice: result.rows[0] });
+    } catch (e) {
+        return next(e);
+    }
+});
+
 
 router.get("/", async (req, res, next) => {
   try {
@@ -40,29 +74,6 @@ router.get('/:id', async (req, res, next) => {
       return next(e);
     }
   });
-  
-  // PUT /invoices/[id]
-  router.put('/:id', async (req, res, next) => {
-    try {
-        const { amt, paid } = req.body;
-        let paidDate = null;
-
-        // If the invoice is being set to "paid", use today's date for `paid_date`
-        if (paid) {
-            paidDate = new Date();
-        }
-
-        const result = await db.query('UPDATE invoices SET amt=$1, paid=$2, paid_date=$3 WHERE id=$4 RETURNING id, comp_code, amt, paid, add_date, paid_date', [amt, paid, paidDate, req.params.id]);
-
-        if (result.rows.length === 0) {
-            throw new ExpressError('Invoice not found', 404);
-        }
-        return res.json({ invoice: result.rows[0] });
-    } catch (e) {
-        return next(e);
-    }
-});
-
   
   // DELETE /invoices/[id]
   router.delete('/:id', async (req, res, next) => {
